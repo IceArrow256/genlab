@@ -3,9 +3,11 @@ import sys
 import PyQt5.QtWidgets as W
 import ia256utilities.filesystem as FS
 import appdirs
+import datetime
+import docxtpl
+import os
 
 import genlab.mainwindow as MW
-import genlab.gendoc as GD
 
 
 class mywindow(W.QMainWindow):
@@ -16,6 +18,35 @@ class mywindow(W.QMainWindow):
         self.data_dir = appdirs.user_data_dir("GenLab", "IceArrow256")
         self.load_settings()
         self.save_settings()
+
+        self.ui.push_button_process.clicked.connect(self.process)
+
+    def get_gender(self, teacher_name):
+        if teacher_name == "Пахальчук Є.В.":
+            return "в"
+        else:
+            return "ла"
+
+    def process(self):
+        now = datetime.datetime.now()
+        year = '{:02d}'.format(now.year)
+        index = self.ui.combo_box_subjects.currentIndex()
+        data = {
+            "department_name": self.settings["department_name"][self.settings["teacher_name"][self.ui.combo_box_subjects.itemText(index)]],
+            "number": str(self.ui.spin_box.value()),
+            "subjects": self.ui.combo_box_subjects.itemText(index),
+            "work_theme": self.ui.line_edit_work_theme.text().upper(),
+            "name": self.ui.line_edit_name.text(),
+            "teacher_name": self.settings["teacher_name"][self.ui.combo_box_subjects.itemText(index)],
+            "year": str(year),
+            "work_purpose": self.ui.text_edit_work_purpose.toPlainText(),
+            "conclusion": self.ui.text_edit_conclusion.toPlainText(),
+            "end": self.get_gender(self.settings["teacher_name"][self.ui.combo_box_subjects.itemText(index)])
+        }
+        doc = docxtpl.DocxTemplate(os.path.dirname(__file__) + "/lab.docx")
+        doc.render(data)
+        doc.save("{} - lab {}.docx".format(
+            self.settings["short"][self.ui.combo_box_subjects.itemText(index)], str(self.ui.spin_box.value())))
 
     def __del__(self):
         self.save_settings()
@@ -43,7 +74,17 @@ class mywindow(W.QMainWindow):
                                                 "Тузенко О.О.": "Кафедра Інформатики",
                                                 "Молчанова В.С.": "Кафедра Інформатики",
                                                 "Сергієнко А.В.": "Кафедра Інформатики"}
+
+            self.settings["short"] = {"Організації баз даних і знань": "DB",
+                                      "Теорія прийняття рішень": "Decision theory",
+                                      "Розподілені інформаційно-аналітичні системи": "Distributed computing",
+                                      "Моделювання та аналіз динамічних процесів": "MADP",
+                                      "Теорія програмування": "PT",
+                                      "Програмування і підтримка веб застосувань": "Web",
+                                      "Технології розподільних систем та паралельних обчислень": "TDSPC"}
+
         self.ui.line_edit_name.setText(self.settings["name"])
+        self.ui.combo_box_subjects.addItems(self.settings["subjects"])
 
     def save_settings(self):
         self.settings["name"] = self.ui.line_edit_name.text()
